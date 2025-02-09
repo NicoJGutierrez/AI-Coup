@@ -1,5 +1,4 @@
 # todo:
-# - [ ] Crear repo en github
 # - [ ] Limpiar las respuestas para que tengan menos \n
 # - [ ] Poner los nombres al lado de lo que escriben
 # - [ ] Hacerlos jugar coup
