@@ -7,6 +7,8 @@ class Player:
     def __init__(self, modelo, chat=[]):
         self.modelo = modelo
         self.chat = chat
+        self.coins = 2
+        self.cards = []
 
     def borrar_pensamiento(self, texto):
         patron = r'<think>.*?</think>'
@@ -23,6 +25,12 @@ class Player:
     def generar_respuesta(self):
         response: ChatResponse = chat(model=self.modelo, messages=self.chat)
         return self.limpiar_respuesta(response.message.content)
+
+    def gain_coins(self, amount):
+        self.coins += amount
+
+    def lose_coins(self, amount):
+        self.coins -= amount
 
     def __str__(self):
         return f'{self.modelo}'

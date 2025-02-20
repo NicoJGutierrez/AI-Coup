@@ -34,7 +34,7 @@ mess2 = [{
 
 for i in range(5):
     response: ChatResponse = chat(model='deepseek-r1:1.5b', messages=mess)
-    print("dipsik:")
+    print("dipsik1:")
     print(borrar_pensamiento(response.message.content).strip())
     response_mess = response.message.content
     response_mess = borrar_pensamiento(response_mess)
@@ -43,7 +43,7 @@ for i in range(5):
 
     response: ChatResponse = chat(model='gemma2:2b', messages=mess2)
 
-    print("gemma:")
+    print("dipsik2:")
     print(borrar_pensamiento(response.message.content).strip())
     response_mess = response.message.content
     response_mess = borrar_pensamiento(response_mess)
