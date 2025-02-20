@@ -1,4 +1,6 @@
 import random
+from ollama import chat
+from ollama import ChatResponse
 
 
 class Player:
@@ -48,8 +50,8 @@ class Game:
         while True:
             print(
                 f"{player.name}'s turn. Coins: {player.coins}, Influence: {player.influence}, Cards: {player.cards}")
-            action = input(
-                "Choose an action (income, coup, tax, assassinate, exchange, steal): ").strip().lower()
+            action = self.get_action_from_model(player)
+            print(f"Action chosen by {player.name}: {action}")
             if action == 'income':
                 player.gain_coins(2)
                 break
@@ -57,7 +59,7 @@ class Game:
                 if player.coins < 7:
                     print("Not enough coins to perform a coup.")
                     continue
-                target = self.choose_target(player)
+                target = self.choose_target(player, action="coup")
                 target.lose_influence()
                 player.lose_coins(7)
                 break
@@ -72,7 +74,7 @@ class Game:
                     if player.coins < 3:
                         print("Not enough coins to assassinate.")
                         continue
-                    target = self.choose_target(player)
+                    target = self.choose_target(player, action="assassinate")
                     target.lose_influence()
                     player.lose_coins(3)
                     break
@@ -86,7 +88,7 @@ class Game:
                     print("You need an Ambassador to perform this action.")
             elif action == 'steal':
                 if 'Captain' in player.cards:
-                    target = self.choose_target(player)
+                    target = self.choose_target(player, action="steal")
                     if target.coins == 0:
                         print("Target has no coins to steal.")
                         continue
@@ -99,12 +101,38 @@ class Game:
             else:
                 print("Invalid action. Please choose a valid action.")
 
-    def choose_target(self, player):
+    def get_action_from_model(self, player, type="action", players=[], keep_alive="10s"):
+        if type == "action":
+            messages = [
+                {'role': 'user',
+                    'content': f"{player.name}, it's your turn. You have {player.coins} coins and {player.influence} influence with cards: {player.cards}. Choose one action from the following: income (gain 2 coins), coup (costs 7 coins, choose a target to lose influence), tax (requires Duke, gain 3 coins), assassinate (requires Assassin, costs 3 coins, choose a target to lose influence), exchange (requires Ambassador, exchange cards with the deck), steal (requires Captain, steal up to 2 coins from a target). Please provide your final decision after a # character, with only the action name after the #:"}
+            ]
+        else:
+            messages = [
+                {'role': 'user', 'content': f"Current action {type}. Valid targets: {players}. Choose a target. Put your final decision behind a # character. Put only the name of the target behind the #:"}
+            ]
+        response: ChatResponse = chat(
+            model='deepseek-r1:1.5b', messages=messages, keep_alive=keep_alive)
+        action = response.message.content.strip().lower()
+
+        # Check for the escape character (e.g., '#')
+        while '#' not in action:
+            print("Model is hallucinating...")
+            response = chat(
+                model='deepseek-r1:1.5b', messages=messages, keep_alive=keep_alive)  # Re-fetch if no escape character
+            action = response.message.content.strip().lower()
+
+        # Extract the action after the escape character
+        action = action.split('#')[-1].strip()
+        return action
+
+    def choose_target(self, player, action="none"):
         while True:
             available_targets = [
                 p.name for p in self.players if p != player and p.influence > 0]
             print(f"Available targets: {', '.join(available_targets)}")
-            target_name = input("Choose a target: ").strip()
+            target_name = self.get_action_from_model(
+                player, type=action, players=available_targets)
             target = next((p for p in self.players if p.name ==
                           target_name and p != player and p.influence > 0), None)
             if target:
