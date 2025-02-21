@@ -1,6 +1,12 @@
 import random
 from ollama import chat
 from ollama import ChatResponse
+from pydantic import BaseModel
+
+
+class Turn(BaseModel):
+    action: str
+    target: str = None
 
 
 class Player:
@@ -50,7 +56,7 @@ class Game:
         while True:
             print(
                 f"{player.name}'s turn. Coins: {player.coins}, Influence: {player.influence}, Cards: {player.cards}")
-            action = self.get_action_from_model(player)
+            action = self.get_action_from_model(player).strip()
             print(f"Action chosen by {player.name}: {action}")
             if action == 'income':
                 player.gain_coins(2)
@@ -101,29 +107,20 @@ class Game:
             else:
                 print("Invalid action. Please choose a valid action.")
 
-    def get_action_from_model(self, player, type="action", players=[], keep_alive="10s"):
+    def get_action_from_model(self, player, type="action", players=[], keep_alive="5s"):
         if type == "action":
             messages = [
                 {'role': 'user',
-                    'content': f"{player.name}, it's your turn. You have {player.coins} coins and {player.influence} influence with cards: {player.cards}. Choose one action from the following: income (gain 2 coins), coup (costs 7 coins, choose a target to lose influence), tax (requires Duke, gain 3 coins), assassinate (requires Assassin, costs 3 coins, choose a target to lose influence), exchange (requires Ambassador, exchange cards with the deck), steal (requires Captain, steal up to 2 coins from a target). Please provide your final decision after a # character, with only the action name after the #:"}
+                    'content': f"{player.name}, it's your turn. You have {player.coins} coins and {player.influence} influence with cards: {player.cards}. Choose one action from the following:\nincome (gain 2 coins)\ncoup (costs 7 coins, choose a target to lose influence)\ntax (requires Duke, gain 3 coins)\nassassinate (requires Assassin, costs 3 coins, choose a target to lose influence)\nexchange (requires Ambassador, exchange cards with the deck)\nsteal (requires Captain, steal up to 2 coins from a target)."}
             ]
         else:
             messages = [
                 {'role': 'user', 'content': f"Current action {type}. Valid targets: {players}. Choose a target. Put your final decision behind a # character. Put only the name of the target behind the #:"}
             ]
         response: ChatResponse = chat(
-            model='deepseek-r1:1.5b', messages=messages, keep_alive=keep_alive)
-        action = response.message.content.strip().lower()
-
-        # Check for the escape character (e.g., '#')
-        while '#' not in action:
-            print("Model is hallucinating...")
-            response = chat(
-                model='deepseek-r1:1.5b', messages=messages, keep_alive=keep_alive)  # Re-fetch if no escape character
-            action = response.message.content.strip().lower()
-
-        # Extract the action after the escape character
-        action = action.split('#')[-1].strip()
+            model='deepseek-r1:1.5b', messages=messages, keep_alive=keep_alive, format=Turn.model_json_schema())
+        action = Turn.model_validate_json(response.message.content).action
+        # target = Turn.model_validate_json(response.message.content).target
         return action
 
     def choose_target(self, player, action="none"):
@@ -133,6 +130,7 @@ class Game:
             print(f"Available targets: {', '.join(available_targets)}")
             target_name = self.get_action_from_model(
                 player, type=action, players=available_targets)
+            print(f"Target chosen by {player.name}: {target_name}")
             target = next((p for p in self.players if p.name ==
                           target_name and p != player and p.influence > 0), None)
             if target:
