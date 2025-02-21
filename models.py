@@ -12,6 +12,9 @@ class Player:
         self.name = name
         self.coins = 2
         self.cards = []
+        self.game_history = [
+            {"role": "system", "content": "You are a player in a modified game of coup. You must win."}]
+        self.error_history = []
 
     @property
     def influence(self):
@@ -29,6 +32,18 @@ class Player:
 
     def __str__(self):
         return f"{self.name}"
+
+    def add_to_game_history(self, message, role="user"):
+        self.game_history.append({"role": role, "content": message})
+        print(message)
+
+    def add_to_error_history(self, message, role="user"):
+        self.error_history.append(self.game_history.pop())
+        self.error_history.append({"role": role, "content": message})
+        print(message)
+
+    def clear_error_history(self):
+        self.error_history = []
 
 
 class Game:
